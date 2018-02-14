@@ -1,0 +1,213 @@
+-- phpMyAdmin SQL Dump
+-- version 4.7.3
+-- https://www.phpmyadmin.net/
+--
+-- Host: localhost:8889
+-- Generation Time: Feb 14, 2018 at 08:19 AM
+-- Server version: 5.6.35
+-- PHP Version: 7.1.8
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+
+--
+-- Database: `fypSchedulingTest`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `Courses`
+--
+
+CREATE TABLE `Courses` (
+  `course_num` varchar(6) NOT NULL,
+  `course_name` varchar(30) NOT NULL,
+  `no_of_lecs` int(1) NOT NULL,
+  `no_of_tuts` int(2) NOT NULL,
+  `no_of_labs` int(2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Courses`
+--
+
+INSERT INTO `Courses` (`course_num`, `course_name`, `no_of_lecs`, `no_of_tuts`, `no_of_labs`) VALUES
+('CE2003', 'DIGITAL SYSTEMS DESIGN*', 2, 1, 2),
+('CE2004', 'CIRCUITS & SIGNAL ANALYSIS*', 2, 1, 2),
+('CE2007', 'MICROPROCESSOR-BASED SYSTEMS D', 2, 1, 2),
+('CX0001', 'ENGINEERS & SOCIETY', 3, 0, 0),
+('CX1003', 'INTRODUCTION TO COMPUTATIONAL ', 2, 1, 2),
+('CX1004', 'INTRODUCTION TO COMPUTING SYST', 2, 1, 0),
+('CX1005', 'DIGITAL LOGIC*', 2, 1, 2),
+('CX1006', 'COMPUTER ORGANISATION AND ARCH', 2, 1, 2),
+('CX1007', 'DATA STRUCTURES*', 2, 1, 1),
+('CX1011', 'ENGINEERING MATHEMATICS I*', 2, 1, 2),
+('CX1012', 'ENGINEERING MATHEMATICS II*', 2, 1, 2),
+('CX2001', 'ALGORITHMS*', 2, 1, 2),
+('CX2002', 'OBJECT ORIENTED DESIGN AND PRO', 2, 1, 2),
+('CX2005', 'OPERATING SYSTEMS*', 2, 1, 2),
+('CX2006', 'SOFTWARE ENGINEERING*', 2, 1, 2),
+('CZ2003', 'COMPUTER GRAPHICS & VISUALISAT', 2, 1, 2),
+('CZ2004', 'HUMAN COMPUTER INTERACTION*', 2, 1, 2),
+('CZ2007', 'INTRODUCTION TO DATABASES*', 2, 1, 2);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `Faculty`
+--
+
+CREATE TABLE `Faculty` (
+  `name` varchar(50) NOT NULL,
+  `courses_num` varchar(200) NOT NULL,
+  `tut_course` varchar(200) NOT NULL,
+  `lab_course` varchar(200) NOT NULL,
+  `appt` int(1) NOT NULL,
+  `admin_appt` int(1) NOT NULL,
+  `service_hr` int(3) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Faculty`
+--
+
+INSERT INTO `Faculty` (`name`, `courses_num`, `tut_course`, `lab_course`, `appt`, `admin_appt`, `service_hr`) VALUES
+('Prof A', 'CX0001', 'CX1004;CE2004', 'CX1004;CE2004', 1, 0, 100),
+('Prof B', 'CX1003;CZ2004;CX2001', 'CX1003;CZ2004;CX2001', 'CX1003;CZ2004;CX2001', 1, 0, 310),
+('Prof C', 'CX1004;CE2003;CX2002', 'CX1004;CE2003;CX2002', 'CX1004;CE2003;CX2002', 1, 0, 301),
+('Prof D', 'CX1005;CE2004;CX2005', 'CX1005;CE2004;CX2005', 'CX1005;CE2004;CX2005', 1, 0, 290),
+('Prof E', 'CX1006;CZ2007;CX2006', 'CX1006;CZ2007;CX2006', 'CX1006;CZ2007;CX2006', 1, 0, 301),
+('Prof F', 'CX1007;CE2007;CZ2004', 'CX1007;CE2007;CZ2004', 'CX1007;CE2007;CZ2004', 2, 0, 301),
+('Prof H', 'CX1011;CX1003', 'CX1011;CX1003', 'CX1011;CX1003', 2, 0, 250),
+('Prof I', 'CX1012;CX1004;CZ2003', 'CX1012;CX1004;CZ2003', 'CX1012;CX1004;CZ2003', 2, 0, 301),
+('Prof J', 'CX2001;CX1005;CE2003', 'CX2001;CX1005;CE2003', 'CX2001;CX1005;CE2003', 2, 0, 301),
+('Prof K', 'CX2002;CX1006;CE2004', 'CX2002;CX1006;CE2004', 'CX1011;CX2002;CX1006', 1, 0, 301),
+('Prof L', 'CX2005;CX1007;CZ2007', 'CX2005;CX1007;CZ2007', 'CX2005;CX1007;CZ2007', 2, 0, 301),
+('Prof M', 'CX2006;CX1011;CE2007', 'CX2006;CX1011;CE2007', 'CX2006;CX1011;CE2007', 2, 0, 301),
+('Prof N', 'CZ2003;CX1012', 'CZ2003;CX1012', 'CZ2003;CX1012', 2, 1, 301),
+('Prof O', 'CX1012;CX1004', 'CX2006;CX1011;CE2007', 'CX1005;CE2004;CX2005', 2, 2, 301),
+('Prof P', 'CX2001;CX1005;CE2003', 'CX1011;CX1003', 'CZ2003;CX1012', 2, 2, 301),
+('Prof Q', '', '', '', 2, 3, 301),
+('Prof R', 'CX2001;CX1003;CZ2003', 'CX2001;CX1003;CZ2003', 'CX2001;CX1003;CZ2003', 1, 0, 310),
+('Prof S', 'CE2007', 'CE2007', 'CE2007', 1, 0, 100),
+('Prof T', 'CZ2003;CX1012', 'CZ2003;CX1012', 'CZ2003;CX1012', 1, 0, 250);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `Grouping`
+--
+
+CREATE TABLE `Grouping` (
+  `group_name` varchar(10) NOT NULL,
+  `size` int(3) NOT NULL,
+  `courses_num` varchar(100) NOT NULL,
+  `year` int(1) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Grouping`
+--
+
+INSERT INTO `Grouping` (`group_name`, `size`, `courses_num`, `year`) VALUES
+('CE1.1', 200, 'CX1011;CX1012', 1),
+('CE2.1', 100, 'CE2003;CE2004', 2),
+('CE3.1', 50, 'CE2007;CX1007', 3),
+('CS1.1', 200, 'CX0001;CX1003', 1),
+('CS2.1', 120, 'CX2001;CX2002', 2),
+('CS3.1', 70, 'CZ2003;CZ2007', 3);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `history`
+--
+
+CREATE TABLE `history` (
+  `course_num` varchar(6) NOT NULL,
+  `history` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `history`
+--
+
+INSERT INTO `history` (`course_num`, `history`) VALUES
+('CX0001', 'Prof A'),
+('CX1003', 'Prof B;Prof P;Prof H;Prof K;Prof R'),
+('CX1004', 'Prof C;Prof I;Prof A'),
+('CX1005', 'Prof D;Prof J;Prof O'),
+('CX1006', 'Prof E;Prof M'),
+('CX1007', 'Prof F;Prof L;Prof F'),
+('CX1011', 'Prof H;Prof Q;Prof K'),
+('CX1012', 'Prof I;Prof N;Prof Q;Prof T'),
+('CX2001', 'Prof J;Prof B;Prof J;Prof R'),
+('CX2002', 'Prof K;Prof A'),
+('CE2003', 'Prof P;Prof J;Prof C;Prof R'),
+('CZ2003', 'Prof N;Prof I;Prof T'),
+('CE2004', 'Prof D;Prof K;Prof A'),
+('CZ2004', 'Prof B;Prof K'),
+('CX2005', 'Prof L;Prof O;Prof L'),
+('CX2006', 'Prof E;Prof M'),
+('CE2007', 'Prof M;Prof F;Prof S'),
+('CZ2007', 'Prof L;Prof E;Prof K');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_preference`
+--
+
+CREATE TABLE `student_preference` (
+  `course_num` varchar(6) NOT NULL,
+  `student_ranking` varchar(200) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `Venues`
+--
+
+CREATE TABLE `Venues` (
+  `room_name` varchar(10) NOT NULL,
+  `capacity` int(3) NOT NULL,
+  `type` int(1) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Venues`
+--
+
+INSERT INTO `Venues` (`room_name`, `capacity`, `type`) VALUES
+('LT19', 200, 1),
+('LT2A', 350, 1),
+('SWLAB1', 50, 3),
+('SWLAB2', 50, 3),
+('SWLAB3', 50, 3),
+('TR+17', 30, 2),
+('TR+18', 40, 2),
+('TR+19', 30, 2);
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `Courses`
+--
+ALTER TABLE `Courses`
+  ADD PRIMARY KEY (`course_num`);
+
+--
+-- Indexes for table `Grouping`
+--
+ALTER TABLE `Grouping`
+  ADD PRIMARY KEY (`group_name`);
+
+--
+-- Indexes for table `Venues`
+--
+ALTER TABLE `Venues`
+  ADD PRIMARY KEY (`room_name`);
