@@ -16,9 +16,12 @@ Using the studies gathered, the project aimed to improve the model using the 3 c
 
 ## Setup
 
-**1.** Database set consist of 4 different data size (test, small, medium, large)
-**2.** Database will be hosted on phpMyAdmin on a local server
-**3.** 2 Algorithm will be written - Stimulated Annealing for Faculty Member Allocation & Genetic Algorithm for Class Scheduling. Both Algorithm will be written on Java
+**1.** Database set consist of 4 different data size (test, small, medium, large).
+
+**2.** Database will be hosted on phpMyAdmin on a local server.
+
+**3.** 2 Algorithm will be written - Stimulated Annealing for Faculty Member Allocation & Genetic Algorithm for Class 
+Scheduling. Both Algorithm will be written on Java.
 
 ## Author
 Thomas Lim Jun Wei
