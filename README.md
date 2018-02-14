@@ -28,8 +28,12 @@ Thomas Lim Jun Wei
 
 ## References
 [1]	R. Sood, "Algorithms and Data Structures for Automated Teaching Workload Allocation," 2016.
+
 [2]	S. Selim, "An algorithm for producing course and lecturer timetables," Computers & Education, vol. 7, no. 2, pp. 101-108, 1983.
+
 [3]	T. F. Burgess, "Planning the Academic's Workload: Different Approaches to Allocating Work to University Academics," Higher Education, vol. 32, no. 1, pp. 63-75, 1996.
+
 [4]	V. A. Bardadym, "Computer-aided school and university timetabling: The new wave," in International Conference on the Practice and Theory of Automated Timetabling, 1995, pp. 22-45: Springer.
+
 [5]	R. Bellio, S. Ceschia, L. Di Gaspero, A. Schaerf, and T. Urli, "Feature-based tuning of simulated annealing applied to the curriculum-based course timetabling problem," Computers & Operations Research, vol. 65, pp. 83-92, 2016.
 
