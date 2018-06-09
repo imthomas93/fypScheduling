@@ -3,7 +3,7 @@ package fypScheduling;
 public class VenueSchedule {
 
 	public static final int NO_OF_DAYS = 5;
-	public static final int NO_OF_SLOT = 12;
+	public static final int NO_OF_SLOT = 9;
 
 	private int[][] timeSlots;
 	private Venue room;

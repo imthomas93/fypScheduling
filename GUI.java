@@ -21,19 +21,22 @@ public class GUI extends JFrame implements ActionListener {
 	StimulatedAnnealing sa;
 	private final String title = "FYP Scheduler";
 	private String[] dataSet = {"Test", "Small", "Medium", "Large"};
+	private String[] dataSet2 = {"Random", "Greedy", "Random Greedy"};
 	
 	// GUI components
 	JPanel mainPanel, sub1, sub2, main1, main2;
 	static JTextArea textbox;
 	JScrollPane scrollV;
-	JButton loadDB, viewFac, viewFacAllocation, viewCourses, viewEvents, viewGrouping, viewVenues, viewHistory, facAllocation, courseAllocation;
-	JComboBox inputDataDDB;
+	JButton loadDB, viewFac, viewFacAllocation, viewCourses, viewEvents, viewVS, viewGrouping, viewVenues, viewHistory, facAllocation, courseAllocation, loadEvent, saveEvent;
+	JButton viewFacDayWork, viewStudentDayWork, viewHrDist;
+	JComboBox inputDataDDB,SAApproachDDB;
 	JTextField mutationProbabilityTextField;
 	JTextField crossoverProbabilityTextField;
 	JTextField populationSizeTextField;
 	JTextField selectionSizeTextField;
 	JTextField aplhaTextField;
 	JTextField temperatureTextField;
+	Thread thread;
 
 
 	public GUI() {
@@ -57,12 +60,21 @@ public class GUI extends JFrame implements ActionListener {
 		viewGrouping = new JButton("View Groupings");
 		viewVenues = new JButton("View Venues");
 		viewHistory = new JButton("View History");
+		viewHrDist = new JButton("View Hr Distribution");
+		loadEvent = new JButton("Load Events");
+		saveEvent = new JButton("Save Events");
+		viewFacDayWork = new JButton("Fac Day work");
+		viewStudentDayWork = new JButton("Student Day work");
+
 		facAllocation = new JButton("Faculty Allocation Setup");
 		courseAllocation = new JButton("Course Allocation Setup");
+		viewVS = new JButton("View Venue Schedule");
 	   
 		// Drop Down List
 		inputDataDDB = new JComboBox(dataSet);
-	    inputDataDDB.setSelectedIndex(0);
+	    inputDataDDB.setSelectedIndex(3);
+	    SAApproachDDB = new JComboBox(dataSet2);
+	    SAApproachDDB.setSelectedIndex(0);
 	    
 	   	// GUI Console 
 		textbox	= new JTextArea(50,50);
@@ -74,17 +86,19 @@ public class GUI extends JFrame implements ActionListener {
 	  	    
 
 	   	// Field
-	   	aplhaTextField = new JTextField("0.99", 30);
-	   	temperatureTextField = new JTextField("100", 30);
+	   	aplhaTextField = new JTextField("0.9", 30);
+	   	temperatureTextField = new JTextField("1000", 30);
 	    mutationProbabilityTextField = new JTextField("50", 30);
 	    crossoverProbabilityTextField = new JTextField("50", 30);
 	    populationSizeTextField = new JTextField("100", 30);
 	    selectionSizeTextField = new JTextField("30", 30);	
 	   
 	    // Panel Layout
-	   	sub1 = new JPanel(new GridLayout(7,2,0,0)); 
+	   	sub1 = new JPanel(new GridLayout(8,2,0,0)); 
 	    sub1.add(new JLabel("Input file DropdownBox"));
 	    sub1.add(inputDataDDB);
+	    sub1.add(new JLabel("Simulated Annealing Approach"));
+	    sub1.add(SAApproachDDB);
 	    sub1.add(new JLabel("Alpha Value"));
 	    sub1.add(aplhaTextField);
 	    sub1.add(new JLabel("Initial Temperature"));
@@ -98,7 +112,7 @@ public class GUI extends JFrame implements ActionListener {
 	    sub1.add(new JLabel("Culled population size"));    
 	    sub1.add(selectionSizeTextField);
 	    
-	   	sub2 = new JPanel(new GridLayout(5,2,10,10));
+	   	sub2 = new JPanel(new GridLayout(8,2,10,10));
 	   	sub2.add(loadDB);
 	   	sub2.add(viewCourses);
 	   	sub2.add(viewFac);
@@ -107,8 +121,15 @@ public class GUI extends JFrame implements ActionListener {
 	   	sub2.add(viewVenues);
 	   	sub2.add(viewHistory);
 	   	sub2.add(viewEvents);
+	   	sub2.add(loadEvent);
+	   	sub2.add(saveEvent);
 	   	sub2.add(facAllocation);
 	   	sub2.add(courseAllocation);
+	   	sub2.add(viewVS);
+	   	sub2.add(viewFacDayWork);
+	   	sub2.add(viewStudentDayWork);
+	   	sub2.add(viewHrDist);
+
 	   	
 	   	viewCourses.setEnabled(false);
 	   	viewFac.setEnabled(false);
@@ -117,6 +138,9 @@ public class GUI extends JFrame implements ActionListener {
 	   	viewVenues.setEnabled(false);
 	   	viewHistory.setEnabled(false);
 	   	viewEvents.setEnabled(false);
+	   	saveEvent.setEnabled(false);
+	   	loadEvent.setEnabled(false);
+	   	viewVS.setEnabled(false);
 	   	facAllocation.setEnabled(false);
 	   	courseAllocation.setEnabled(false);
 
@@ -150,10 +174,13 @@ public class GUI extends JFrame implements ActionListener {
 	  		sa.printSetupConfig();
 		   	viewCourses.setEnabled(true);
 		   	viewFac.setEnabled(true);
+		   	
 		   	viewFacAllocation.setEnabled(true);
 		   	viewGrouping.setEnabled(true);
 		   	viewVenues.setEnabled(true);
 		   	viewEvents.setEnabled(true);
+		   	saveEvent.setEnabled(true);
+		   	loadEvent.setEnabled(true);
 		   	viewHistory.setEnabled(true);
 		   	facAllocation.setEnabled(true);
 		   	courseAllocation.setEnabled(false);
@@ -225,6 +252,39 @@ public class GUI extends JFrame implements ActionListener {
 		      }
 		    });
 	    
+	    saveEvent.addActionListener(new ActionListener() {
+		      @Override
+		      public void actionPerformed(ActionEvent event) {
+		    	  	textbox.setText(null);
+		    	  	sa.saveEvents();
+		    	  	textbox.append("Events saved into Database!");
+		      }
+		    });
+	    
+	    loadEvent.addActionListener(new ActionListener() {
+		      @Override
+		      public void actionPerformed(ActionEvent event) {
+		    	  	textbox.setText(null);
+		    	  	sa.loadEvents();
+		    	  	facAllocation.setEnabled(true);
+				courseAllocation.setEnabled(true);
+				viewVS.setEnabled(true);
+				
+				ga.loadDatabase(sa);
+		    	  	textbox.append("Events loaded from Database!");
+		    	  	
+		      }
+		    });
+	    
+	    viewVS.addActionListener(new ActionListener() {
+		      @Override
+		      public void actionPerformed(ActionEvent event) {
+		    	  	textbox.setText(null);
+		    	  	String text = ga.printTimetable();
+		    	  	textbox.append(text);
+		      }
+		    });
+	    
 	    viewEvents.addActionListener(new ActionListener() {
 		      @Override
 		      public void actionPerformed(ActionEvent event) {
@@ -239,12 +299,51 @@ public class GUI extends JFrame implements ActionListener {
 		      public void actionPerformed(ActionEvent event) {
 		    	  	sa.setAlpha(Double.parseDouble(aplhaTextField.getText()));
 		    	  	sa.setTemperture(Double.parseDouble(temperatureTextField.getText()));
-
-		    	  	sa.runSAAlgo();
+		    	  	String approach = SAApproachDDB.getSelectedItem().toString();
+		    	  	sa.runSAAlgo(approach);
 		 
 		    	  	facAllocation.setEnabled(false);
 		    	  	viewEvents.setEnabled(true);
 		    	  	courseAllocation.setEnabled(true);
+		    	  	viewVS.setEnabled(true);
+				ga.loadDatabase(sa);
+				
+ 				thread = new Thread(new Runnable() {  
+ 			        public void run() {
+ 						// create initial random population
+ 						ga.createRandomPopulation();
+ 			       }
+ 			    }  );
+ 			    thread.setPriority(Thread.NORM_PRIORITY);  
+ 			    thread.start();
+
+		      }
+		    });
+	    
+	    viewFacDayWork.addActionListener(new ActionListener() {
+		      @Override
+		      public void actionPerformed(ActionEvent event) {
+		    	  	textbox.setText(null);
+		    	  	String text = ga.printFacDayWorked();
+		    	  	textbox.append(text);
+		      }
+		    });
+	    
+	    viewStudentDayWork.addActionListener(new ActionListener() {
+		      @Override
+		      public void actionPerformed(ActionEvent event) {
+		    	  	textbox.setText(null);
+		    	  	String text = ga.printGroupDayWorked();
+		    	  	textbox.append(text);
+		      }
+		    });
+	    
+	    viewHrDist.addActionListener(new ActionListener() {
+		      @Override
+		      public void actionPerformed(ActionEvent event) {
+		    	  	textbox.setText(null);
+		    	  	String text = ga.printHrDist();
+		    	  	textbox.append(text);
 		      }
 		    });
 	   
@@ -254,11 +353,20 @@ public class GUI extends JFrame implements ActionListener {
 		    	  	ga.setMutationProb(Integer.parseInt(mutationProbabilityTextField.getText()));
 				ga.setCrossoverProb(Integer.parseInt(crossoverProbabilityTextField.getText()));
 				ga.setPopulationSize(Integer.parseInt(populationSizeTextField.getText()));
-				ga.loadDatabase(sa);
 		    	  	courseAllocation.setEnabled(false);
-		    	  	
-		  		Timetable bestTimetable = ga.generateTimetable();
-				ga.printTimetable(bestTimetable);
+		    	  	viewVS.setEnabled(true);
+		    	  
+		
+				
+ 				thread = new Thread(new Runnable() {  
+ 			        public void run() {
+ 				  		Timetable bestTimetable = ga.generateTimetable();
+ 						ga.printTimetable(bestTimetable);
+ 						//ga.printTimetable();
+ 			       }
+ 			    }  );
+ 			    thread.setPriority(Thread.NORM_PRIORITY);  
+ 			    thread.start();
 		      }
 		    });
 	}
@@ -267,5 +375,13 @@ public class GUI extends JFrame implements ActionListener {
 	public void actionPerformed(ActionEvent e) {
 		// TODO Auto-generated method stub
 		
+	}
+	
+	public static void appendMessage(String message){
+		message += "\n";
+		// for IDE console
+		System.out.print(message);
+		// for GUI console
+		textbox.append(message);
 	}
 }

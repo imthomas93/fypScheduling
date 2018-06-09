@@ -17,7 +17,7 @@ public class Faculty implements Serializable {
 	private double teachingContribution;
 	private double allocatedWLU;
 	private ArrayList<Course> assignedCourse;
-	
+	private int[] dayOfWork;
 
 	
 	public Faculty(String name, int appt, int adminAppt, int serviceHr){
@@ -32,8 +32,54 @@ public class Faculty implements Serializable {
 		setTeachingContribution();
 		setAllocatedWLU(0);
 		assignedCourse = new ArrayList<Course>();
+		dayOfWork = new int[5];
+		resetDayOfWork();
 	}
 	
+	public void resetDayOfWork() {
+		for (int i = 0; i <5; i++) {
+			dayOfWork[i] = 0;
+		}
+	}
+	
+	public void increaseDayOfWork(int day) {
+		dayOfWork[day] = dayOfWork[day] + 1;
+	}
+	
+	public int countDaysOfWork() {
+		int result = 0;
+		for (int i = 0; i < 5; i++) {
+			if (dayOfWork[i] != 0) {
+				result++;
+			}
+		}
+		return result;
+	}
+	
+	public boolean isDayExceeded() {
+		int result = 0;
+		for (int i = 0; i < 5; i++) {
+			if (dayOfWork[i] != 0) {
+				result++;
+			}
+		}
+		
+		if (result >= 3) {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public boolean isDayExceeded(int day) {
+		
+		if (dayOfWork[day] > 1) {
+			return true;
+		}
+		
+		return false;
+	}
+
 	public int getId() {
 		return id;
 	}
@@ -135,7 +181,7 @@ public class Faculty implements Serializable {
 			relaxation += 1;
 		}
 		
-		if (this.serviceHr>300){
+		if (this.serviceHr > 300){
 			relaxation += 0.2;
 		}
 		else if (this.serviceHr > 200){
@@ -258,8 +304,31 @@ public class Faculty implements Serializable {
 		assignedCourse = new ArrayList<Course>();
 	}
 
-	public String toString2() {
+	public String toString2(double avg) {
 		// TODO Auto-generated method stub
-		return this.name + "\tTeaching Contribution: " +  this.teachingContribution + "\tAllocated WLU: " + this.allocatedWLU + "\t" + listOfCourse2();
+		double optimal = teachingContribution * avg;
+		double wluDis = Math.round((((this.allocatedWLU - optimal) / optimal) * 100) /10) * 10;
+		return this.name + "\tTeaching Contribution: " +  this.teachingContribution + "\tAllocated WLU: " + this.allocatedWLU + "\tWLU DIST: " + wluDis + "\t\t" + listOfCourse2();
 	}
+	
+	public String toString3(double avg) {
+		// TODO Auto-generated method stub
+		double optimal = teachingContribution * avg;
+		double wluDis = Math.round((((this.allocatedWLU - optimal) / optimal) * 100) /10) * 10;
+		return this.name + "\tWLU DIST: " + wluDis;
+	}
+	
+	public String toString4() {
+		return this.name + "\t " + countDaysOfWork();
+	}
+	
+	public int getWLUVariation(double avg) {
+		double optimal = teachingContribution * avg;
+		double wluDis = Math.round((((this.allocatedWLU - optimal) / optimal) * 100) /10) * 10;
+
+		int result = (int) wluDis;
+		return result;
+	}
+
+
 }

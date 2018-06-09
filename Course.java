@@ -61,7 +61,7 @@ public class Course implements Serializable{
 	}
 	
 	public String toString(){
-		String result = this.id + "\t" + this.courseNum +"\t"+ this.courseName +"\t"+ this.noOfLecs +"\t"+ this.noOfTuts +"\t"+ this.noOfLabs;
+		String result = this.id + "\t" + this.courseNum +"\t"+ this.noOfLecs +"\t"+ this.noOfTuts +"\t"+ this.noOfLabs +"\t"+ this.courseName ;
 		return result;
 	}
 

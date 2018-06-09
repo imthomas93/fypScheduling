@@ -15,6 +15,7 @@ public class Utilities {
 	private Map<Integer, Faculty> faculty;
 	private Map<Integer, Event> events;
 	private ArrayList<Integer> eventList;
+	private Timetable bestTimetable;
 	
 
 	private Map<String, History> history;
@@ -34,6 +35,10 @@ public class Utilities {
 
 	public void addVenues(Venue room){
 		this.rooms.put(room.getId(), room);
+	}
+	
+	public void addEvent(Event event) {
+		this.events.put(event.getId(), event);
 	}
 	
 	public int getNoOfVenues(){
@@ -238,12 +243,104 @@ public class Utilities {
 
 	public double getWorstWLUAllocated() {
 		double result = 0;
+		
 		for(Faculty child : faculty.values()) {
-			if (child.getAllocatedWLU() > result) {
-				result = child.getAllocatedWLU();
+			double effiectiveTC = this.getAvgWLU() * child.getTeachingContribution();
+			double allocatedWLU = child.getAllocatedWLU();
+			
+			double distribtion = ((allocatedWLU-effiectiveTC)/effiectiveTC) * 100;
+			if (distribtion <0) {
+				result +=0;
+			}
+			else if (distribtion < 10) {
+				result +=10;
+			}
+			else if (distribtion < 20) {
+				result +=20;
+			}
+			else if (distribtion < 20) {
+				result +=30;
+			}
+			else if (distribtion <40) {
+				result +=40;
+			}else {
+				result +=80;
 			}
 		}
+		
 		return result;
+	}
+	
+	public ArrayList<Course> getWorstAllocatedEvents(){
+		double worst = 0;
+		int facID = 0;
+		
+		for(Faculty child : faculty.values()) {
+			if (child.getAllocatedWLU() > worst) {
+				worst = child.getAllocatedWLU();
+				facID = child.getId();
+			}
+		}
+		
+		Faculty child = faculty.get(facID);
+		ArrayList<Course> courseList = child.getAssignedCourse();
+	
+		return courseList;
+	}
+	
+	private int randomInt(int low, int high){
+		Random r = new Random();
+		double result = (high-low) * r.nextDouble() + low;
+		return (int) result;
+	}
+	
+	public ArrayList<Course> getWorstAllocatedEvents2(){
+		double worst = 0;
+		int facID = 0;
+		Queue queue = new Queue(10);
+		
+		for(Faculty child : faculty.values()) {
+			double tc = child.getTeachingContribution();
+			double avg = getAvgWLU();
+			double optimalWLU = tc*avg;
+			double currentWLU = child.getAllocatedWLU();
+			
+			double distribution = ((currentWLU - optimalWLU) / optimalWLU) * 100;
+			if (distribution > 40) {
+				facID = child.getId();
+				queue.insert(facID);
+			}
+		}
+		
+		if (queue.isEmpty()) {
+			for(Faculty child : faculty.values()) {
+				double tc = child.getTeachingContribution();
+				double avg = getAvgWLU();
+				double optimalWLU = tc*avg;
+				double currentWLU = child.getAllocatedWLU();
+				
+				double distribution = ((currentWLU - optimalWLU) / optimalWLU) * 100;
+				if (distribution > 30) {
+					facID = child.getId();
+					queue.insert(facID);
+				}
+			}
+		}
+		
+		int pos = randomInt(0, queue.size());
+		
+		while(pos!=0) {
+			queue.remove();
+			pos--;
+		}
+		
+		facID = queue.peekFront();
+		
+		
+		Faculty child = faculty.get(facID);
+		ArrayList<Course> courseList = child.getAssignedCourse();
+	
+		return courseList;
 	}
 
 	public Map<Integer, StudentPreference> getStudentPreference() {
@@ -271,6 +368,72 @@ public class Utilities {
 		
 		return result;
 	}
+	
+
+
+	public int getOverloadedFac() {
+		// TODO Auto-generated method stub
+		double avgWLU = getAvgWLU();
+		double effectiveWLU;
+		int result = 0;
+		
+		for(Faculty child : faculty.values()) {
+			effectiveWLU = child.getTeachingContribution() * avgWLU;
+			if (child.getAllocatedWLU() > effectiveWLU) {
+				result++;
+			}
+		}
+		
+		return result;
+	}
+
+	public Timetable getBestTimetable() {
+		return bestTimetable;
+	}
+
+	public void setBestTimetable(Timetable bestTimetable) {
+		this.bestTimetable = bestTimetable;
+	}
+
+	public double getLecTotalWLU() {
+		double result = 0;
+		for (Event child : events.values()){
+			if (child.getType() == Type.LEC)
+				result += child.getWLU();
+		}
+		return result;
+	}
+	
+	public double getTutTotalWLU() {
+		double result = 0;
+		for (Event child : events.values()){
+			if (child.getType() == Type.TUT)
+				result += child.getWLU();
+		}
+		return result;
+	}
+	
+	public double getLabTotalWLU() {
+		double result = 0;
+		for (Event child : events.values()){
+			if (child.getType() == Type.LAB)
+				result += child.getWLU();
+		}
+		return result;
+	}
+
+	public double getAvgDistribution(double avgWLU) {
+		double result = 0;
+		double effectiveWLU, distribution = 0;
+		for(Faculty child : faculty.values()) {
+			effectiveWLU = child.getTeachingContribution() * avgWLU;
+			distribution = ((child.getAllocatedWLU() - effectiveWLU) / effectiveWLU) * 100;
+			result = result + (distribution);
+		}
+		result = result / faculty.size();
+		return result;
+	}
+
 
 	
 }

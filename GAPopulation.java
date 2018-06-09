@@ -26,45 +26,109 @@ public class GAPopulation {
 	    }
 	  }
 	
-	public void createRandomIndividuals(int target, Utilities utility){
-		Map<Integer, Venue> rooms = utility.getVenues();
-		int noOfRooms = utility.getVenues().size();
-		for(int i = 0; i < target; i++){
-			// register all available timeslots
-			ArrayList<TimeSlot> availableSlotsList = new ArrayList<TimeSlot>();
-			for (int venueId : rooms.keySet()){
-				
-				// add all "free" slot
-				for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
-					for (int slot =0; slot < VenueSchedule.NO_OF_SLOT; slot++){
-						TimeSlot child = new TimeSlot(venueId, day, slot);
-						availableSlotsList.add(child);
+	  public void createRandomIndividuals(int target, Utilities utility){
+			Map<Integer, Venue> rooms = utility.getVenues();
+			int noOfRooms = utility.getVenues().size();
+			for(int i = 0; i < target; i++){
+				// register all available timeslots
+				ArrayList<TimeSlot> availableSlotsList = new ArrayList<TimeSlot>();
+				for (int venueId : rooms.keySet()){
+					
+					// add all "free" slot
+					for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+						for (int slot =0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+							TimeSlot child = new TimeSlot(venueId, day, slot);
+							availableSlotsList.add(child);
+						}
 					}
 				}
-			}
 
-			Timetable timetable = new Timetable(noOfRooms);
+				Timetable timetable = new Timetable(noOfRooms);
+				
+				for (int venueId : rooms.keySet()){
+					Venue venue = rooms.get(venueId);
+					VenueSchedule vs = new VenueSchedule(venue);
+					timetable.setVenueSchedule(venueId, vs);
+				}
+				
+				
+				// assign events to any randomly selected available timeslot
+				Random rand = new Random(System.currentTimeMillis());
 			
-			for (int venueId : rooms.keySet()){
-				Venue venue = rooms.get(venueId);
-				VenueSchedule vs = new VenueSchedule(venue);
-				timetable.setVenueSchedule(venueId, vs);
+				for(Event child : utility.getEvents().values()){
+					
+					
+					if (child.getEventDuration() == 2) {			
+						int randGen = rand.nextInt(availableSlotsList.size()-1);
+						int randGen2 = randGen+1;
+						
+						TimeSlot avail1 = availableSlotsList.get(randGen);
+						TimeSlot avail2 = availableSlotsList.get(randGen2);
+						
+						while(avail1.day != avail2.day && ((avail1.timeSlot+1)) != avail2.timeSlot) {
+							// if day are not same, means its not consecutive, regenerate
+							randGen = rand.nextInt(availableSlotsList.size()-1);
+							randGen2 = randGen+1;
+							
+							avail1 = availableSlotsList.get(randGen);
+							avail2 = availableSlotsList.get(randGen2);
+						}
+						
+						VenueSchedule vs = timetable.getVenueSchedule()[avail1.roomId];
+						vs.setEvent(avail1.day, avail1.timeSlot, child.getId());
+						VenueSchedule vs2 = timetable.getVenueSchedule()[avail2.roomId];
+						vs2.setEvent(avail2.day, avail2.timeSlot, child.getId());
+					}
+					else {
+						TimeSlot availableSlot = availableSlotsList.get(rand.nextInt(availableSlotsList.size()));
+						VenueSchedule vs = timetable.getVenueSchedule()[availableSlot.roomId];
+						vs.setEvent(availableSlot.day, availableSlot.timeSlot, child.getId());
+						availableSlotsList.remove(availableSlot);
+					}
+				}
+				individuals.add(timetable);
+				availableSlotsList.clear();
 			}
-			
-			
-			// assign events to any randomly selected available timeslot
-			Random rand = new Random(System.currentTimeMillis());
-			
-			for(Event child : utility.getEvents().values()){
-				TimeSlot availableSlot = availableSlotsList.get(rand.nextInt(availableSlotsList.size()));
-				VenueSchedule vs = timetable.getVenueSchedule()[availableSlot.roomId];
-				vs.setEvent(availableSlot.day, availableSlot.timeSlot, child.getId());
-				availableSlotsList.remove(availableSlot);
-			}
-			individuals.add(timetable);
-			availableSlotsList.clear();
 		}
-	}
+	  public void createRandomIndividuals1(int target, Utilities utility){
+			Map<Integer, Venue> rooms = utility.getVenues();
+			int noOfRooms = utility.getVenues().size();
+			for(int i = 0; i < target; i++){
+				// register all available timeslots
+				ArrayList<TimeSlot> availableSlotsList = new ArrayList<TimeSlot>();
+				for (int venueId : rooms.keySet()){
+					
+					// add all "free" slot
+					for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+						for (int slot =0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+							TimeSlot child = new TimeSlot(venueId, day, slot);
+							availableSlotsList.add(child);
+						}
+					}
+				}
+
+				Timetable timetable = new Timetable(noOfRooms);
+				
+				for (int venueId : rooms.keySet()){
+					Venue venue = rooms.get(venueId);
+					VenueSchedule vs = new VenueSchedule(venue);
+					timetable.setVenueSchedule(venueId, vs);
+				}
+				
+				
+				// assign events to any randomly selected available timeslot
+				Random rand = new Random(System.currentTimeMillis());
+				
+				for(Event child : utility.getEvents().values()){
+					TimeSlot availableSlot = availableSlotsList.get(rand.nextInt(availableSlotsList.size()));
+					VenueSchedule vs = timetable.getVenueSchedule()[availableSlot.roomId];
+					vs.setEvent(availableSlot.day, availableSlot.timeSlot, child.getId());
+					availableSlotsList.remove(availableSlot);
+				}
+				individuals.add(timetable);
+				availableSlotsList.clear();
+			}
+		}
 	
 	public Timetable getTopIndividual(){
 		return individuals.getFirst();
@@ -107,4 +171,72 @@ public class GAPopulation {
 	public int size(){
 		return individuals.size();
 	}
+	
+	/*
+		public void createRandomIndividuals(int target, Utilities utility){
+		Map<Integer, Venue> rooms = utility.getVenues();
+		int noOfRooms = utility.getVenues().size();
+		for(int i = 0; i < target; i++){
+			// register all available timeslots
+			ArrayList<TimeSlot> availableSlotsList = new ArrayList<TimeSlot>();
+			for (int venueId : rooms.keySet()){
+				
+				// add all "free" slot
+				for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+					for (int slot =0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+						TimeSlot child = new TimeSlot(venueId, day, slot);
+						availableSlotsList.add(child);
+					}
+				}
+			}
+
+			Timetable timetable = new Timetable(noOfRooms);
+			
+			for (int venueId : rooms.keySet()){
+				Venue venue = rooms.get(venueId);
+				VenueSchedule vs = new VenueSchedule(venue);
+				timetable.setVenueSchedule(venueId, vs);
+			}
+			
+			
+			// assign events to any randomly selected available timeslot
+			Random rand = new Random(System.currentTimeMillis());
+		
+			for(Event child : utility.getEvents().values()){
+				
+				
+				if (child.getEventDuration() == 2) {			
+					int randGen = rand.nextInt(availableSlotsList.size()-1);
+					int randGen2 = randGen+1;
+					
+					TimeSlot avail1 = availableSlotsList.get(randGen);
+					TimeSlot avail2 = availableSlotsList.get(randGen2);
+					
+					while(avail1.day != avail2.day && ((avail1.timeSlot+1)) != avail2.timeSlot) {
+						// if day are not same, means its not consecutive, regenerate
+						randGen = rand.nextInt(availableSlotsList.size()-1);
+						randGen2 = randGen+1;
+						
+						avail1 = availableSlotsList.get(randGen);
+						avail2 = availableSlotsList.get(randGen2);
+					}
+					
+					VenueSchedule vs = timetable.getVenueSchedule()[avail1.roomId];
+					vs.setEvent(avail1.day, avail1.timeSlot, child.getId());
+					VenueSchedule vs2 = timetable.getVenueSchedule()[avail2.roomId];
+					vs2.setEvent(avail2.day, avail2.timeSlot, child.getId());
+				}
+				else {
+					TimeSlot availableSlot = availableSlotsList.get(rand.nextInt(availableSlotsList.size()));
+					VenueSchedule vs = timetable.getVenueSchedule()[availableSlot.roomId];
+					vs.setEvent(availableSlot.day, availableSlot.timeSlot, child.getId());
+					availableSlotsList.remove(availableSlot);
+				}
+			}
+			individuals.add(timetable);
+			availableSlotsList.clear();
+		}
+	}
+
+	 */
 }

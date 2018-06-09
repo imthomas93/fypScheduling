@@ -36,6 +36,18 @@ public class Event implements Cloneable, Serializable{
 		this.WLU = calculateWLU();
 	}
 
+	public Event (int id, Type type, int eventGroupID, int size, ArrayList<Faculty> faculty, Course course, Grouping grouping, int eventDuration, double wlu){
+		this.id = id;
+		this.type = type;
+		this.eventGroupId = eventGroupID;
+		this.size = size;
+		this.faculty = faculty;
+		this.course = course;
+		this.grouping = grouping;
+		this.eventDuration = eventDuration;
+		this.WLU = wlu;
+	}
+	
 	@Override
     protected Event clone() {
         Event clone = null;
@@ -103,25 +115,25 @@ public class Event implements Cloneable, Serializable{
 				parameter = 2;
 			}
 			else if (size > 150){
-				parameter = 1.5;
+				parameter = 1.75;
 			}
 			else if(size > 60){
-				parameter = 1.25;
+				parameter = 1.5;
 			}
 			else{
 				parameter = 1;
 			}
-			result = 1.5 * parameter * 13 * eventDuration;
+			result = 2.5 * parameter * 13 * eventDuration;
 		}
 		else if(type == Type.TUT){
-			result = 1.25 * 13 * eventDuration;
+			result = 1.5 * 13 * eventDuration;
 		}
 		else{
 			if (this.eventDuration == 1){
-				result = 1 * 13 * eventDuration;
+				result = 1.4 * 13 * eventDuration * 1.25;
 			}
 			else{
-				result = 1 * 5 * eventDuration;
+				result = 1.4 * 5 * eventDuration * 1.25;
 			}
 			
 		}
@@ -137,25 +149,25 @@ public class Event implements Cloneable, Serializable{
 				parameter = 2;
 			}
 			else if (size > 150){
-				parameter = 1.5;
+				parameter = 1.75;
 			}
 			else if(size > 60){
-				parameter = 1.25;
+				parameter = 1.5;
 			}
 			else{
 				parameter = 1;
 			}
-			result = 1.5 * parameter * 13 * eventDuration * novelity;
+			result = 2.5 * parameter * 13 * eventDuration * novelity;
 		}
 		else if(type == Type.TUT){
-			result = 1.25 * 13 * eventDuration * novelity;
+			result = 1.5 * 13 * eventDuration * novelity * 1.25;
 		}
 		else{
 			if (this.eventDuration == 1){
-				result = 1 * 13 * eventDuration * novelity;
+				result = 1.4 * 13 * eventDuration * novelity * 1.25;
 			}
 			else{
-				result = 1 * 5 * eventDuration * novelity;
+				result = 1.4 * 5 * eventDuration * novelity * 1.25;
 			}
 			
 		}
@@ -207,6 +219,12 @@ public class Event implements Cloneable, Serializable{
 		return type;
 	}
 	
+	public void setSize(int newSize) {
+		this.size = newSize;
+	}
+	
+
+	
 	public String toString(){
 		String subOut= "[ ";
 		for (Faculty child : faculty){
@@ -231,8 +249,5 @@ public class Event implements Cloneable, Serializable{
 		}
 		return false;
 	}
-
-
 	
-
 }

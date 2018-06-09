@@ -1,11 +1,15 @@
 package fypScheduling;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -23,12 +27,15 @@ public class StimulatedAnnealing {
 	private Map<Integer, Preference> lecPreferenceList;
 	private Map<Integer, Preference> tutPreferenceList;
 	private Map<Integer, Preference> labPreferenceList;
+	private static ArrayList<Integer> solutionTable = new ArrayList<Integer>();
+	private static ArrayList<Integer> wluVariationTable = new ArrayList<Integer>();
 
 	private double temperature = 100;
 	private double alpha = 0.99;
 
     HashMap<String, Course> courseNumList = new HashMap<String, Course>();
     HashMap<String, Faculty> facNameList = new HashMap<String, Faculty>();
+    HashMap<String, Grouping> groupingList = new HashMap<String, Grouping>();
 
 	
 	public StimulatedAnnealing(){
@@ -54,16 +61,16 @@ public class StimulatedAnnealing {
 			}
 			else if(size == "Small"){
 				//TODO : WHEN DATASET IS READY - SMALL
-				myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypScheduling", "root", "root");
+				myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypSchedulingSmall", "root", "root");
 
 			}
 			else if (size == "Medium"){
 				//TODO : WHEN DATASET IS READY - MEDIUM
-				myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypScheduling", "root", "root");
+				myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypSchedulingMid", "root", "root");
 			}
 			else{
 				//TODO : WHEN DATASET IS READY - LARGE
-				myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypScheduling", "root", "root");
+				myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypSchedulingBig", "root", "root");
 			}
 			
 			//create statement 
@@ -77,14 +84,74 @@ public class StimulatedAnnealing {
 			loadHistory(myStmt);
 			loadPreferenceList();
 			
-			//utility.addEvents();
 			baseSolution.createRandomIndividuals(utility);
 			updateWLUAssignedCourse(baseSolution.getList());
+			
+			for (Event child : baseSolution.getList()) {
+				utility.getEvents().put(child.getId(), child);
+			}
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
 		
+	}
+
+	public void saveEvents() {
+		try{
+			//connection to database
+			Class.forName("com.mysql.jdbc.Driver");
+			Connection myConn;
+			myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypSchedulingBig", "root", "root");
+
+		    Statement st = myConn.createStatement();
+		    // Use TRUNCATE
+		    String sql = "TRUNCATE event";
+		    // Execute deletion
+		    st.executeUpdate(sql);
+		    
+		    for (Event child : utility.getEvents().values()) {
+		    		int id = child.getId();
+		    		int type = 0;
+		    		Event.Type etype = child.getType();
+		    		if (etype == Type.LEC) {
+		    			type = 1;
+		    		}else if (etype == Type.TUT) {
+		    			type = 2;
+		    		}else {
+		    			type = 3;
+		    		}
+		    		int eventGroupID = child.getEventGroupId();
+		    		int size = child.getSize();
+		    		String faculty = "";
+		    		for (Faculty facChild : child.getFaculty()) {
+		    			faculty+=facChild.getName() + ";";
+		    		}
+		    		faculty = faculty.substring(0, faculty.length()-1);
+		    		String course = child.getCourse().getCourseNum();
+		    		String grouping = child.getGrouping().getGroupName();
+		    		int eventDuration = child.getEventDuration();
+		    		double wlu = child.getWLU();
+		    		
+		    		PreparedStatement stmt = myConn.prepareStatement("INSERT INTO event (id, type, eventGroupID, size, faculty, course, grouping, eventDuration, wlu) VALUES (?, ?, ?,?, ?, ?,?, ?, ?)");
+
+		    		stmt.setInt(1, id);
+		    		stmt.setInt(2, type);
+		    		stmt.setInt(3, eventGroupID);
+		    		stmt.setInt(4, size);
+		    		stmt.setString(5, faculty);
+		    		stmt.setString(6, course);
+		    		stmt.setString(7, grouping);
+		    		stmt.setInt(8, eventDuration);
+		    		stmt.setDouble(9, wlu);
+
+		    		stmt.executeUpdate();
+		    }
+
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
  	
 	private void loadPreferenceList() {
@@ -146,6 +213,57 @@ public class StimulatedAnnealing {
 		}		
 	}
 
+	public void loadEvents() {
+		try{
+			//connection to database
+			Class.forName("com.mysql.jdbc.Driver");
+			Connection myConn;
+			myConn = (Connection) DriverManager.getConnection("jdbc:mysql://localhost:8889/fypSchedulingBig", "root", "root");
+			//create statement 
+			Statement myStmt = (Statement) myConn.createStatement();
+			
+			ResultSet myRs = myStmt.executeQuery("select * from Event");
+			utility.getEvents().clear();
+
+			while (myRs.next()) {
+				int id = myRs.getInt(1);
+				int typeNo = myRs.getInt(2);
+				Event.Type type = Event.setType(typeNo);
+				int eventGroupID = myRs.getInt(3);
+				int size = myRs.getInt(4);
+				
+				ArrayList<Faculty> facList = new ArrayList<Faculty>();
+				String list = myRs.getString("faculty");
+				String[] facIDList = list.split(";");	
+				for(String facName : facIDList){
+					Faculty fac = facNameList.get(facName);
+					facList.add(fac);
+				}
+				
+				String courseNum = myRs.getString("course");
+				Course course = courseNumList.get(courseNum);
+				
+				String groupNum = myRs.getString("grouping");
+				Grouping grouping = groupingList.get(groupNum);
+				
+				int eventDuration = myRs.getInt(8);
+				double wlu = myRs.getInt(9);
+				
+				Event e = new Event(id, type, eventGroupID, size, facList, course, grouping, eventDuration, wlu);
+				utility.addEvent(e);
+				
+			}
+			// Reset Faculty Assignment info and recalculate WLU allocated
+			updateWLUAssignedCourse(utility.getEvents().values());
+			
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+
+
 	private void loadGrouping(Statement myStmt) {
 		// TODO Auto-generated method stub
 		try{
@@ -154,7 +272,9 @@ public class StimulatedAnnealing {
 				String name = myRs.getString("group_name");
 				int size = myRs.getInt(2);
 				int year = myRs.getInt(4);
-				Grouping child = new Grouping(name, size, year);
+				int specialisation = myRs.getInt(5);
+
+				Grouping child = new Grouping(name, size, year,specialisation);
 				
 				// Tokeniser here to add courses
 				String[] courseList = myRs.getString("courses_num").split(";");
@@ -163,6 +283,7 @@ public class StimulatedAnnealing {
 					child.addCourse(temp);
 				}
 				utility.addGrouping(child);
+				groupingList.put(child.getGroupName(), child);
 			}
 		}
 		catch (SQLException e) {
@@ -271,7 +392,7 @@ public class StimulatedAnnealing {
 	/*
 	 * SA Algo
 	 */
-	public void runSAAlgo(){		
+	public void runSAAlgo(String approach){		
 		GUI.textbox.setText("Temperature: " + temperature + "\tAlpha: " + alpha);
 	  	GUI.textbox.append("\nRunning Stimulated Algorithm. Pls wait...");
 		bestSolution = new SAPopulation(baseSolution.getList());		
@@ -281,21 +402,43 @@ public class StimulatedAnnealing {
 		double optimalWorstWLU = baseWorstWLU;
 				
 		int counter = 0;
+		
 		while(temperature > 1){		
 			SAPopulation proposed = new SAPopulation(baseSolution.getList());
 			
 			//SWAP
-			proposed.populateNewSolution(utility, lecPreferenceList, tutPreferenceList, labPreferenceList);
+			if (approach == "Random") {
+				// Random Approach
+				int rand =  (int) Math.round( Math.random() );
+				if (rand == 0)
+					proposed.populateNewSolution(utility, lecPreferenceList, tutPreferenceList, labPreferenceList);
+				else
+					proposed.populateNewGreedySolution2(utility, lecPreferenceList, tutPreferenceList, labPreferenceList);
+			}else if (approach == "Greedy"){
+				// Greedy Approach
+				proposed.populateNewGreedySolution(utility, lecPreferenceList, tutPreferenceList, labPreferenceList);
+			}else {
+				// Random Greedy Approach
+				proposed.populateNewGreedySolution2(utility, lecPreferenceList, tutPreferenceList, labPreferenceList);
+			}
 			
+			
+		
 			// Reset Faculty Assignment info and recalculate WLU allocated
 			updateWLUAssignedCourse(proposed.getList());
 			
 			// Get Worst WLU from proposeSolution
 			double newWorstWLU = utility.getWorstWLUAllocated();
+			solutionTable.add((int)newWorstWLU);
+
 			System.out.println(counter + "\tBase: " + baseWorstWLU + "\t\tProposed: " + newWorstWLU + "\t\tOptimal: " + optimalWorstWLU);
+			String str = counter + "\tBase: " + baseWorstWLU + "\t\tProposed: " + newWorstWLU + "\t\tOptimal: " + optimalWorstWLU;
+			GUI.appendMessage(str);
+			//System.out.println(counter + "\tBase: " + base + "\t\tProposed: " + proposedSol + "\t\tOptimal: " + best);
 
 			//ACCEPTANCE POLICY
 			double randGen = randomDouble();
+			
 			if (acceptPolicy(baseWorstWLU, newWorstWLU, temperature) > randGen) {
 				baseWorstWLU = newWorstWLU;	
 				baseSolution = new SAPopulation(proposed.getList());
@@ -308,15 +451,21 @@ public class StimulatedAnnealing {
 				optimalWorstWLU = utility.getWorstWLUAllocated();
 
 			}
-			
+
 			//COOLING
 			temperature *=alpha;
 			counter++;
-		}			
+		}
+		
 		// display output
 		displayFinalAllocation();
+		for (Faculty child : utility.getFaculty().values()) {
+			wluVariationTable.add(child.getWLUVariation(utility.getAvgWLU()));
+		}
+		
+		System.out.println(approach);
+		writeData();
 	}
-	
 	
 	private void updateWLUAssignedCourse(LinkedList<Event> target){	
 
@@ -374,29 +523,8 @@ public class StimulatedAnnealing {
 		}
 
 	}
-		
-	public void testSAAlgo() {
-		bestSolution = new SAPopulation(baseSolution.getList());		
-		
-		// Get Worst WLU from baseSolution
-		double baseWorstWLU = utility.getWorstWLUAllocated();
-		double optimalWorstWLU = baseWorstWLU;
-		SAPopulation proposed = new SAPopulation(baseSolution.getList());
-		
-		proposed.populateNewSolution2(utility, lecPreferenceList, tutPreferenceList, labPreferenceList);
-
-		// Reset Faculty Assignment info and recalculate WLU allocated
-		updateWLUAssignedCourseTEST(proposed.getList());
-		
-		
-		// Get Worst WLU from proposeSolution
-		double newWorstWLU = utility.getWorstWLUAllocated();
-		System.out.println("Base: " + baseWorstWLU + "\t\tProposed: " + newWorstWLU + "\t\tOptimal: " + optimalWorstWLU);
-		
-	}
 	
-	private void updateWLUAssignedCourseTEST(LinkedList<Event> target){	
-		
+	private void updateWLUAssignedCourse(Collection<Event> values) {
 		for (Faculty child : utility.getFaculty().values()){
 			// reset WLU Allocated to each fac memeber @utitlity
 			child.resetWLUAllocated();
@@ -405,7 +533,7 @@ public class StimulatedAnnealing {
 		}
 
 		// Compute the amount of assigned course to each faculty
-		for (Event child : target){
+		for (Event child : values){
 			int courseID = child.getCourse().getId();
 			Course course = child.getCourse();
 			
@@ -418,16 +546,8 @@ public class StimulatedAnnealing {
 			}
 		}
 		
-		System.out.println("BEFORE NOVELTY");
-		for(Event child: target) {
-			child.calculateWLU(1);
-			System.out.println(child.toString());
-		}
-		
-		System.out.println("\n\nAFTER NOVELTY");
-
 		// recalculate events with novelity factor in
-		for(Event child : target) {
+		for(Event child : values) {
 			String key = child.getCourse().getCourseNum();
 			ArrayList<Faculty> facList  = child.getFaculty();
 			
@@ -435,18 +555,15 @@ public class StimulatedAnnealing {
 			if (!utility.getHistory().containsKey(key)){
 				novelity = 2;
 				child.calculateWLU(novelity);
-				System.out.println(child.getCourse().getCourseNum() + " is not in history");
 			}else {
 				History history = utility.getHistory().get(key);
 				novelity = history.findFac(facList);
-				System.out.println(child.getId() + " \tNov: " + novelity);
 			}	
 			child.calculateWLU(novelity);
-			System.out.println(child.toString());
 		}
 		
 		// assign wlu to fac
-		for (Event child : target){
+		for (Event child : values){
 			double wlu;
 			if (child.getFaculty().size() > 1){
 				wlu = child.getWLU() / child.getFaculty().size();
@@ -459,17 +576,18 @@ public class StimulatedAnnealing {
 			for (Faculty facChild : child.getFaculty()){
 				utility.getFaculty().get(facChild.getId()).addWLU(wlu);
 			}
-		}
-
+		}		
 	}
-
 	private double randomDouble(){
 		Random r = new Random();
 		return r.nextInt(1000) / 1000;
 	}
 		
 	private double acceptPolicy(double base, double proposed, double temperature){
-		if (proposed > base)
+		if (proposed == base) {
+			return Math.exp((0.1)/ temperature);
+		}
+		else if (proposed > base)
 			// if base is lower than proposed, adjust p
 			return Math.exp((base-proposed)/ temperature);
 		else
@@ -520,6 +638,7 @@ public class StimulatedAnnealing {
 		
 		System.out.println("\n\nEvent Allocation Result");
 		updateWLUAssignedCourse(bestSolution.getList());
+		utility.getEvents().clear();
 		for (Event child : bestSolution.getList()) {
 			System.out.println(child.toString());
 			utility.getEvents().put(child.getId(), child);
@@ -527,7 +646,7 @@ public class StimulatedAnnealing {
 		
 		System.out.println("\n\nFaculty Assignment Result");
 		for (Faculty child: utility.getFaculty().values()) {
-			System.out.println(child.toString2());
+			System.out.println(child.toString2(utility.getAvgWLU()));
 		}
 		System.out.println("Worst WLU: " + utility.getWorstWLUAllocated());		
 		
@@ -536,13 +655,15 @@ public class StimulatedAnnealing {
 		result += "Worst WLU: " + utility.getWorstWLUAllocated() + "\nFaculty Assignment Result\n";
 		
 		for (Faculty child: utility.getFaculty().values()) {
-			result += child.toString2() + "\n";
+			result += child.toString2(utility.getAvgWLU()) + "\n";
 		}
 		
 		result+= "\n\nEvent Allocation Result\n";
 		for (Event child : bestSolution.getList()) {
 			result += child.toString() + "\n";
 		}
+		
+		result+= "\nOverloadedFac: " + utility.getOverloadedFac();
 		
 		GUI.textbox.append(result);
 	}
@@ -572,12 +693,13 @@ public class StimulatedAnnealing {
 		
 		Map<Integer, Faculty> facList = utility.getFaculty();
 	    for(int key : facList.keySet()){
-	    		result += utility.getFaculty().get(key).toString2() + "\n";
+	    		result += utility.getFaculty().get(key).toString3(utility.getAvgWLU()) + "\n";
 	    }
 	    
 	    double worstWLU = utility.getWorstWLUAllocated();
 	    double avgWLU = utility.getAvgWLU();
-	    result += "\n\nAvg WLU: " + avgWLU + "\tWorst WLU Allocated: " + worstWLU;
+	    result += "\n\nAvg WLU: " + avgWLU + "\tWLU Fitness: " + worstWLU;
+
 		return result;
 	}
 
@@ -620,4 +742,31 @@ public class StimulatedAnnealing {
 		return result;
 	}
 	
+	private static void writeData() {
+		// TODO Auto-generated method stub
+		FileWriter writer;
+		try {
+			writer = new FileWriter("output.txt");
+			for(int i =0; i < solutionTable.size(); i++){
+				String str = "" + solutionTable.get(i) +"\n";
+				writer.write(str);
+			}
+			writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+		
+		try {
+			writer = new FileWriter("wluVariation.txt");
+			for(int i =0; i < wluVariationTable.size(); i++){
+				String str = "" + wluVariationTable.get(i) +"\n";
+				writer.write(str);
+			}
+			writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }

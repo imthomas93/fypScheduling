@@ -14,7 +14,10 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
 
+import com.mysql.fabric.xmlrpc.base.Array;
+
 import fyp.CourseHistory;
+import fypScheduling.Event.Type;
 
 public class GeneticAlgorithm {
 	private int TARGET_FITNESS = 0;
@@ -26,6 +29,8 @@ public class GeneticAlgorithm {
 
 	private GAPopulation population;
 	private Utilities utility;
+	private 	int numGeneration = 1;
+
 
 	public GeneticAlgorithm(){
 		utility = new Utilities();
@@ -36,6 +41,12 @@ public class GeneticAlgorithm {
 	 */	
 	public void loadDatabase(StimulatedAnnealing saAlgo) {
 		// TODO Auto-generated method stub
+		utility.getCourses().clear();
+		utility.getVenues().clear();
+		utility.getFaculty().clear();
+		utility.getGrouping().clear();
+		utility.getEvents().clear();
+
 		utility.getCourses().putAll(saAlgo.getUtilites().getCourses());
 		utility.getVenues().putAll(saAlgo.getUtilites().getVenues());
 		utility.getFaculty().putAll(saAlgo.getUtilites().getFaculty());
@@ -47,38 +58,54 @@ public class GeneticAlgorithm {
 	/*
 	 * ALGORITHM
 	 */
-	public Timetable generateTimetable(){		
+	public Timetable generateTimetable(){
+
 		// create initial random population
 		createRandomPopulation();
-		
+		 
+		// evalulate timetable fitness and sort base on fitness
 		ListIterator<Timetable> it = population.listIterator();
 		while(it.hasNext()){
 			Timetable child = it.next();
 			fitness(child);
 		}
-		
-		
 		population.sortIndividuals();
 		
-		int numGeneration = 1;
-		while(population.getTopIndividual().getFitness() < TARGET_FITNESS){
+		
+		// loop while fitness is not at desired level
+		while((population.getTopIndividual().getFitness() < TARGET_FITNESS)){
+			// produce new children
 			GAPopulation child = breed(population, MAX_POPULATION_SIZE);
 			population = selection(population, child);
+			//population = selectionRoulette(population, child);
+			//population = selectionTournament(population, child);
+
 			
 			// sort population by fitness
 			population.sortIndividuals();
+			if (numGeneration > 50) {
+				mutation2(population.getTopIndividual());
+				repairTimetable(population.getTopIndividual());
+				fitness(population.getTopIndividual());
+			}
+			
 			numGeneration++;	
 			System.out.println("Generation: " + numGeneration + "\tBest Fitness: " + population.getTopIndividual().getFitness() +"\tWorst Fitness: " + population.getWorstIndividual().getFitness());
+			String str = "Generation: " + numGeneration + "\tBest Fitness: " + population.getTopIndividual().getFitness() +"\tWorst Fitness: " + population.getWorstIndividual().getFitness() + "\n";
+			GUI.textbox.append(str);
+			evaluateBestFitness(population.getTopIndividual());
 		}
+		
+		utility.setBestTimetable(population.getTopIndividual());
 		
 		return population.getTopIndividual();
 	}
-	
-	
+
+
 	/*
 	 * Genetic Algorithm
 	 */
-	private GAPopulation createRandomPopulation(){
+	public GAPopulation createRandomPopulation(){
 		population = new GAPopulation();
 		population.createRandomIndividuals(MAX_POPULATION_SIZE, utility);
 		return population;
@@ -106,17 +133,17 @@ public class GeneticAlgorithm {
 	    }
 	    
 	    // create an alias index
-	    int[] alias = new int[fitnessSum];
+	    int[] alias = new int[fitnessSum+1];
 	    
 	    // add individual index a proportionate amount of times
 	   int aliasIndex = 0;
 	   it = target.listIterator();
-	   for (int individual = 0; individual < population.size(); individual++) {
+	   for (int individual = 0; individual < (population.size()); individual++) {
 	      for (int j = 0; j < pseudoFitness[individual]; j++) {
 	        alias[aliasIndex] = individual;
 	        aliasIndex++;
 	      }
-	    }
+	   }
 		    
 		Random rand = new Random(System.currentTimeMillis());
 		
@@ -138,12 +165,18 @@ public class GeneticAlgorithm {
 				}
 				ai++;
 			}
+			
 			int pi2 = alias[j];
 			Timetable target1 = target.getIndividual(pi1);
 			Timetable target2 = target.getIndividual(pi2);
 			
 			Timetable child = crossOverWithPoint(target1, target2);
+			
+			// mutate the child
 			mutation(child);
+			if (numGeneration > 50) {
+				mutation2(child);
+			}
 			repairTimetable(child);
 			fitness(child);
 			
@@ -157,6 +190,7 @@ public class GeneticAlgorithm {
 	 * SELECTION ALGO - merge the best parents and children population into 1 single population
 	 */
 	private GAPopulation selection(GAPopulation population, GAPopulation children){
+	
 		GAPopulation result = new GAPopulation();
 		children.sortIndividuals();
 		
@@ -188,6 +222,65 @@ public class GeneticAlgorithm {
 		return result;
 	}
 	
+	private GAPopulation selectionRoulette(GAPopulation population, GAPopulation children){
+		GAPopulation result = new GAPopulation();
+		children.sortIndividuals();
+		
+		ListIterator<Timetable> targetParents = population.listIterator();
+		ListIterator<Timetable> targetChildren = children.listIterator();
+		
+		Timetable nextParent = next(targetParents);
+		Timetable nextChild = next(targetChildren);
+		
+		while(result.size() < MAX_POPULATION_SIZE){
+			if (nextChild != null){
+				if (nextChild.getFitness() > nextParent.getFitness()){
+					double prob = randomDouble();
+					if (prob > 0.3) {
+						result.addIndividual(nextChild);
+						nextChild = next(targetChildren);
+					}
+					else {
+						result.addIndividual(nextChild);
+						nextChild = next(targetChildren);
+					}
+				}
+				else{
+					double prob = randomDouble();
+					if (prob > 0.7) {
+						result.addIndividual(nextChild);
+						nextChild = next(targetChildren);
+					}else {
+						result.addIndividual(nextParent);
+						nextParent = next(targetParents);
+					}
+				}
+			}
+			else{
+				if(nextParent!=null){
+					result.addIndividual(nextParent);
+					nextParent = next(targetParents);
+				}
+			}
+		}
+		return result;
+	}
+
+	private GAPopulation selectionTournament(GAPopulation population, GAPopulation children){
+		GAPopulation result = new GAPopulation();
+
+		ListIterator<Timetable> targetParents = population.listIterator();
+		ListIterator<Timetable> targetChildren = children.listIterator();
+		
+		int avg = (population.size() + children.size()) / 4;
+		for (int i = 0; i < avg; i++) {
+			double rand = randomDouble();
+			if (rand > 0.5) {
+			}
+		}
+		return result;
+	}
+
 	private Timetable crossOverWithPoint(Timetable target1, Timetable target2){
 		
 		Timetable result = new Timetable(utility.getNoOfVenues());
@@ -225,7 +318,8 @@ public class GeneticAlgorithm {
 	/*
 	 * REPAIR ALGO
 	 */
-	private void repairTimetable(Timetable target){
+	
+	private void repairTimetable1(Timetable target){
 		VenueSchedule[] vsList = target.getVenueSchedule();
 		HashMap<Integer, LinkedList<VenueDayTime>> locations = new HashMap<Integer, LinkedList<VenueDayTime>>();
 		LinkedList<VenueDayTime> unusedSlots = new LinkedList<VenueDayTime>();
@@ -278,9 +372,229 @@ public class GeneticAlgorithm {
 	    }
 	}
 	
+	private void repairTimetable(Timetable target){
+		VenueSchedule[] vsList = target.getVenueSchedule();
+		HashMap<Integer, LinkedList<VenueDayTime>> locations = new HashMap<Integer, LinkedList<VenueDayTime>>();
+		LinkedList<VenueDayTime> unusedSlots = new LinkedList<VenueDayTime>();
+		
+		for(int eventID : utility.getEvents().keySet()){
+			locations.put(eventID, new LinkedList<VenueDayTime>());
+		}
+		
+		for(int i = 0; i < utility.getNoOfVenues(); i++){
+			VenueSchedule vsChild = vsList[i];
+			for (int day =0; day < VenueSchedule.NO_OF_DAYS; day++){
+				for(int slot= 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+					int bookedEvent = vsChild.getEvent(day, slot);
+					if (bookedEvent == 0){
+						unusedSlots.add(new VenueDayTime(i, day, slot));
+					}
+					else{
+						if (utility.getEvents().get(bookedEvent).getEventDuration() == 2) {
+							if (slot == 0) {
+								int bookedEventAfter = vsChild.getEvent(day, (slot+1));
+								
+								if (bookedEventAfter == bookedEvent) {
+									locations.get(bookedEvent).add(new VenueDayTime(i, day, slot));
+								}
+								else {
+									unusedSlots.add(new VenueDayTime(i, day, slot));
+									// think of sol to remove 1hr id with 2hr allocation
+									vsList[i].setEvent(day, slot, 0);
+								}
+							}
+							else if (slot == (VenueSchedule.NO_OF_SLOT-1)) {
+								int bookedEventBefore = vsChild.getEvent(day, (slot-1));
+								if (bookedEventBefore == bookedEvent) {
+									locations.get(bookedEvent).add(new VenueDayTime(i, day, slot));
+								}
+								else {
+									unusedSlots.add(new VenueDayTime(i, day, slot));									
+									// think of sol to remove 1hr id with 2hr allocation
+									vsList[i].setEvent(day, slot, 0);
+								}
+							}
+							else {
+								int bookedEventAfter = vsChild.getEvent(day, (slot+1));
+								int bookedEventBefore = vsChild.getEvent(day, (slot-1));
+								
+								if ((bookedEventBefore == bookedEvent) || (bookedEventAfter == bookedEvent)){
+									locations.get(bookedEvent).add(new VenueDayTime(i, day, slot));
+								}
+								else {
+									unusedSlots.add(new VenueDayTime(i, day, slot));
+									// think of sol to remove 1hr id with 2hr allocation
+									vsList[i].setEvent(day, slot, 0);
+								}
+							}
+						}else {
+							locations.get(bookedEvent).add(new VenueDayTime(i, day, slot));
+						}
+					}
+				}
+			}
+		}
+	    List<Integer> unbookedEvents = new LinkedList<Integer>();
+	    
+	    for(int eventID : utility.getEvents().keySet()){
+		    	if (locations.get(eventID).size() == 0){
+		    		//event is not booked
+		    		unbookedEvents.add(eventID);
+		    	}
+		    	else if(locations.get(eventID).size() > 1 && utility.getEvents().get(eventID).getEventDuration() == 1){
+	    			// event is booked more than once
+		    		LinkedList<VenueDayTime> slots = locations.get(eventID);
+		    		Collections.shuffle(slots);
+		    		
+		    		while(slots.size() >1){
+		    			VenueDayTime child = slots.removeFirst();
+		    			
+		    			// mark as unusued
+		    			unusedSlots.add(child);
+		    			vsList[child.venue].setEvent(child.day, child.time, 0);
+		    		}
+		    	}
+		    	else if(locations.get(eventID).size() > 2 && utility.getEvents().get(eventID).getEventDuration() == 2){
+	    			// event is booked more than once
+		    		LinkedList<VenueDayTime> slots = locations.get(eventID);
+		    		
+		    		while(slots.size() >2){
+		    			VenueDayTime child = slots.removeFirst();
+		    			
+		    			// mark as unusued
+		    			unusedSlots.add(child);
+		    			vsList[child.venue].setEvent(child.day, child.time, 0);
+		    		}
+		    	}
+	    }
+	    
+	    
+	    Collections.shuffle(unusedSlots);
+	    for (int eventID : unbookedEvents){
+	    	// place unbooked event in an unused slot
+	    	
+	    		if (utility.getEvents().get(eventID).getEventDuration() == 1) {
+	    			boolean flag = true;
+	    			while(flag) {
+	    				VenueDayTime child = unusedSlots.removeFirst();
+	    				if (utility.getVenues().get(child.venue).getType() == utility.getEvents().get(eventID).getType()) {
+	    					vsList[child.venue].setEvent(child.day, child.time, eventID);
+			    			flag = false;
+	    				}else {
+	    					// put back the unused slot and reshuffle
+			    			unusedSlots.add(child);
+			    		    Collections.shuffle(unusedSlots);
+	    				}
+	    			}
+	    		}
+	    		else {
+	    			boolean flag = true;
+	    			while(flag) {
+	    				int secondSlot;
+		    			VenueDayTime child = unusedSlots.removeFirst();
+		    			int spec = utility.getEvents().get(eventID).getGrouping().getSpecialisation();
+		    			if (spec == 1) {
+		    				if (utility.getVenues().get(child.venue).getType() == Event.Type.LEC) {
+		    					if (child.time == (VenueSchedule.NO_OF_SLOT-1)) {
+				    				secondSlot = child.time-1;
+				    			}
+				    			else{
+				    				secondSlot = child.time+1;
+				    			}
+				    			
+				    			int secondEvent = vsList[child.venue].getEvent(child.day, secondSlot);
+				    			if (secondEvent == 0) {
+				    				// second slot is free to add
+					    			int index = 0, pos = -1;
+					    			for (VenueDayTime second : unusedSlots) {
+					    				if ((second.day == child.day) && (second.time == secondSlot) && (second.venue == child.venue)) {
+					    					pos = index;
+					    					break;
+					    				}else {
+						    				index++;
+					    				}
+					    			}
+					    			
+					    			if (pos != -1) {
+					    				unusedSlots.remove(pos);
+						    			vsList[child.venue].setEvent(child.day, secondSlot, eventID);
+						    			vsList[child.venue].setEvent(child.day, child.time, eventID);
+						    			flag = false;
+					    			}else {
+					    				// put back the unused slot and reshuffle
+						    			unusedSlots.add(child);
+						    		    Collections.shuffle(unusedSlots);
+					    			}
+				    			}
+				    			else {
+				    				// put back the unused slot and reshuffle
+					    			unusedSlots.add(child);
+					    		    Collections.shuffle(unusedSlots);
+				    			}
+				    			
+		    				}
+		    				else {
+		    					// put back the unused slot and reshuffle
+				    			unusedSlots.add(child);
+				    		    Collections.shuffle(unusedSlots);
+			    			}
+		    			}else {
+		    				if (utility.getVenues().get(child.venue).getType() == utility.getEvents().get(eventID).getType()) {
+		    					if (child.time == (VenueSchedule.NO_OF_SLOT-1)) {
+				    				secondSlot = child.time-1;
+				    			}
+				    			else{
+				    				secondSlot = child.time+1;
+				    			}
+				    			
+				    			int secondEvent = vsList[child.venue].getEvent(child.day, secondSlot);
+				    			if (secondEvent == 0) {
+				    				// second slot is free to add
+					    			int index = 0, pos = -1;
+					    			for (VenueDayTime second : unusedSlots) {
+					    				if ((second.day == child.day) && (second.time == secondSlot) && (second.venue == child.venue)) {
+					    					pos = index;
+					    					break;
+					    				}else {
+						    				index++;
+					    				}
+					    			}
+					    			
+					    			if (pos != -1) {
+					    				unusedSlots.remove(pos);
+						    			vsList[child.venue].setEvent(child.day, secondSlot, eventID);
+						    			vsList[child.venue].setEvent(child.day, child.time, eventID);
+						    			flag = false;
+					    			}else {
+					    				// put back the unused slot and reshuffle
+						    			unusedSlots.add(child);
+						    		    Collections.shuffle(unusedSlots);
+					    			}
+				    			}
+				    			else {
+				    				// put back the unused slot and reshuffle
+					    			unusedSlots.add(child);
+					    		    Collections.shuffle(unusedSlots);
+				    			}
+		    				}
+		    				else {
+		    					// put back the unused slot and reshuffle
+				    			unusedSlots.add(child);
+				    		    Collections.shuffle(unusedSlots);
+		    				}
+		    			}
+	
+	    			}
+	    			
+
+	    		}
+	    		
+	    }
+	}	
 	/*
 	 * MUTATION ALGO - swap timeslot and a day
 	 */
+	
 	private void mutation(Timetable target){
 		Random rand = new Random(System.currentTimeMillis());
 		VenueSchedule[] vsList = target.getVenueSchedule();
@@ -308,7 +622,105 @@ public class GeneticAlgorithm {
 			}
 		}
 	}
+
+	private void mutation2(Timetable target){
+		Random rand = new Random(System.currentTimeMillis());
+		VenueSchedule[] vsList = target.getVenueSchedule();
+		
+		for(int i = 0; i < utility.getNoOfVenues(); i++){
+			VenueSchedule vs = vsList[i];
+			Event.Type venueType = vs.getVenue().getType();
+			int venueSize = vs.getVenue().getCapacity();
+
+			// loop all day
+			for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+				// loop all slot
+				for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+					int eventID = vs.getEvent(day, slot);
+					if(eventID !=0){
+						Event.Type type = utility.getEvents(eventID).getType();
+						int spec = utility.getEvents(eventID).getGrouping().getSpecialisation();
+						if (spec == 1) {
+							if (venueType != Event.Type.LEC) {
+								vs.setEvent(day,slot, 0);
+							}
+						}
+						else if(type != venueType){
+							vs.setEvent(day,slot, 0);
+						}
+						
+						int eventSize = utility.getEvents(eventID).getSize();
+						if (venueSize < eventSize){
+							vs.setEvent(day,slot, 0);
+						}
+						
+						
+						for (Faculty facChild : utility.getFaculty().values()){
+							facChild.resetDayOfWork();
+							Event eventChild = utility.getEvents(eventID);
+							if(eventChild.getType() != Event.Type.LAB) {
+								ArrayList<Faculty> facList = eventChild.getFaculty();
+								for(Faculty fac : facList) {
+									if (fac.getId() == facChild.getId()) {
+										facChild.increaseDayOfWork(day);
+									}
+									
+									if (day > 3 && facChild.isDayExceeded()) {
+										if (facChild.isDayExceeded(day))
+										vs.setEvent(day,slot, 0);
+									}
+								}
+							}
+						}
+						for(Grouping grouping : utility.getGrouping().values()) {
+							grouping.resetDayOfWork();
+							Event eventChild = utility.getEvents(eventID);
+							if(eventChild.getType() == Event.Type.LEC) {
+								if (eventChild.getGrouping().getId() == grouping.getId()) {
+									grouping.increaseDayOfWork(day);
+								}
+								if (day > 3 && grouping.isDayExceeded()) {
+									if (grouping.isDayExceeded(day))
+										vs.setEvent(day,slot, 0);
+								}
+							}
+						}
+						
+					}
+					
+					
+				}
+			}
+		}
+		
+		for (Faculty facChild : utility.getFaculty().values()){
+			for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){	
+				for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+					
+					int subResult = 0;
+					for (VenueSchedule vsChild : vsList){
+						int eventId = vsChild.getEvent(day, slot);
+						
+						if (eventId != 0){
+							Event event = utility.getEvents(eventId);		
+							ArrayList<Faculty> facList = event.getFaculty();
+							for(Faculty fac : facList) {
+								if (fac.getId() == facChild.getId()) {
+									subResult++;
+
+								}
+								if (subResult > 1) {
+									vsChild.setEvent(day,slot, 0);
+								}
+							}
+						}
+					}
 	
+				}
+			}
+		}
+	}
+
 	/*
 	 * Fitness constraints solver
 	 */
@@ -317,32 +729,128 @@ public class GeneticAlgorithm {
 		int facultyDoubleAllocate = facultyDoubleAllocate(target);
 		int venueCapExceed = venueCapExceed(target);
 		int venueTypeBreached = venueTypeBreaches(target);
-		int timingBreach = venueTimingBreaches(target);
+		int facDayWork = dayFacWork(target);
+		int groupDayWork = dayGroupWork(target);
+	
+		//venueTypeBreached = 0;
 		
-		int breaches = 2*groupingBreach + facultyDoubleAllocate + 4*venueCapExceed + 4*venueTypeBreached + 2*timingBreach ;
+		int breaches = 2*groupingBreach + facultyDoubleAllocate + 4*venueCapExceed + 4*venueTypeBreached + facDayWork + groupDayWork;
 		int fitness = breaches *-1;
 		target.setFitness(fitness);
 	}
+	
+	private void evaluateBestFitness(Timetable target) {
+		// TODO Auto-generated method stub
+		int groupingBreach = groupingBreach(target);
+		int facultyDoubleAllocate = facultyDoubleAllocate(target);
+		int venueCapExceed = venueCapExceed(target);
+		int venueTypeBreached = venueTypeBreaches(target);
+		int facDayWork = dayFacWork(target);
+		int groupDayWork = dayGroupWork(target);
 
-	private int venueTimingBreaches(Timetable target) {
-		int result = 0;				
-		VenueSchedule[] vsList = target.getVenueSchedule();	
 
-		// loop all day
-		for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
-			// loop all slot
-			for (int slot = 8; slot < VenueSchedule.NO_OF_SLOT; slot++){
-				for(VenueSchedule vs :vsList){
-					int eventID = vs.getEvent(day, slot);
-					if(eventID !=0){
-						result++;
+		System.out.println("GroupBreach: " + groupingBreach + "  FacDouble: " + facultyDoubleAllocate + "  venueCap: " + venueCapExceed + "  VenueTypeBreach: " + venueTypeBreached + "\t" + "facDayWK:" + facDayWork
+				 + "\t" + "GroupDayWK:" + groupDayWork+ "\n");
+	}
+	
+	private int facultyDoubleAllocate(Timetable target) {
+		int result = 0;
+		
+		VenueSchedule[] vsList = target.getVenueSchedule();
+		
+		for (Faculty facChild : utility.getFaculty().values()){
+			for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){	
+				for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+					
+					int subResult = 0;
+					for (VenueSchedule vsChild : vsList){
+						int eventId = vsChild.getEvent(day, slot);
+						
+						if (eventId != 0){
+							Event event = utility.getEvents(eventId);		
+							ArrayList<Faculty> facList = event.getFaculty();
+							for(Faculty fac : facList) {
+								if (fac.getId() == facChild.getId()) {
+									subResult++;
+
+								}
+							}
+						}
+					}
+					
+					if (subResult > 1) {
+						result += subResult - 1;
 					}
 				}
 			}
 		}
 		return result;
 	}
+
+	private int dayFacWork(Timetable target) {
+		int result = 0;
+		VenueSchedule[] vsList = target.getVenueSchedule();
+		
+		for (Faculty facChild : utility.getFaculty().values()){
+			facChild.resetDayOfWork();
+			for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+				for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){	
+					
+					for(VenueSchedule vs :vsList){
+						int eventID = vs.getEvent(day, slot);
+						if (eventID != 0) {
+							Event eventChild = utility.getEvents(eventID);
+							if(eventChild.getType() != Event.Type.LAB) {
+								ArrayList<Faculty> facList = eventChild.getFaculty();
+								for(Faculty fac : facList) {
+									if (fac.getId() == facChild.getId()) {
+										facChild.increaseDayOfWork(day);
+									}
+								}
+							}
+						}
+					}
+					
+				}	
+			}
+
+			if (facChild.countDaysOfWork() > 4) {
+				result++;
+			}
+		}
+		return result;
+	}
 	
+	private int dayGroupWork(Timetable target) {
+		int result = 0;
+		VenueSchedule[] vsList = target.getVenueSchedule();
+		
+		for(Grouping grouping : utility.getGrouping().values()) {
+			grouping.resetDayOfWork();
+			for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+				for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+					for(VenueSchedule vs :vsList){
+						int eventID = vs.getEvent(day, slot);
+						if (eventID != 0) {
+							Event eventChild = utility.getEvents(eventID);
+							if(eventChild.getType() == Event.Type.LEC) {
+								if (eventChild.getGrouping().getId() == grouping.getId()) {
+									grouping.increaseDayOfWork(day);
+								}
+							}
+						}
+					}
+				}
+			}
+			if (grouping.countDaysOfWork() > 4) {
+				result++;
+			}
+		}
+
+		
+		return result;
+	}
+		
 	private int groupingBreach(Timetable target) {
 		// TODO Auto-generated method stub
 		int result = 0;
@@ -353,6 +861,7 @@ public class GeneticAlgorithm {
 			// loop all slot
 			for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
 				for(Grouping grouping : utility.getGrouping().values()){
+					
 					HashMap<Integer, Integer> eventGroupCount = new HashMap<Integer, Integer>();
 					
 					for(VenueSchedule vs :vsList){
@@ -387,7 +896,6 @@ public class GeneticAlgorithm {
 				}
 			}
 		}
-		
 		return result;
 	}
 
@@ -407,7 +915,13 @@ public class GeneticAlgorithm {
 					int eventID = vs.getEvent(day, slot);
 					if(eventID !=0){
 						Event.Type type = utility.getEvents(eventID).getType();
-						if(type != venueType){
+						int spec = utility.getEvents(eventID).getGrouping().getSpecialisation();
+						if (spec == 1) {
+							if (venueType != Event.Type.LEC) {
+								result++;
+							}
+						}
+						else if(type != venueType){
 							result++;
 						}
 					}
@@ -416,8 +930,7 @@ public class GeneticAlgorithm {
 
 		}
 		
-		return result;
-		
+		return result;	
 	}
 
 	private int venueCapExceed(Timetable target) {
@@ -445,48 +958,10 @@ public class GeneticAlgorithm {
 		return result;
 	}
 
-	private int facultyDoubleAllocate(Timetable target) {
-		int result = 0;
-		
-		VenueSchedule[] vsList = target.getVenueSchedule();
-		
-		for (Faculty facChild : utility.getFaculty().values()){
-			
-			// loop all day
-			for (int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){	
-				// loop all slot
-				for (int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
-					
-					int subResult = 0;
-					for (VenueSchedule vsChild : vsList){
-						int eventId = vsChild.getEvent(day, slot);
-						
-						if (eventId != 0){
-							Event event = utility.getEvents(eventId);
-							
-							if(event.getType() != Event.Type.LEC){
-								if(event.getFaculty().get(0).getId() == facChild.getId()){
-									subResult++;
-								}
-							}
-							else{
-								for(Faculty child :event.getFaculty()){
-									if(child.getId() == facChild.getId()){
-										subResult++;
-									}								
-								}
-							}
-							
-						}
-					}
-					if (subResult > 1){
-						result += subResult -1;
-					}
-				}
-			}
-		}
-		return result;
-	}
+	/*
+	 * Valid on SQ976/ SQ978/ SQ982 only
+Valid inbound flights Valid on SQ973/ SQ975/ SQ981 only
+	 */
 	
 	/*
 	 * GETTERS & SETTERS
@@ -530,9 +1005,13 @@ public class GeneticAlgorithm {
 	public void setPopulationSize(int parseInt) {
 		this.MAX_POPULATION_SIZE = parseInt;
 	}
+	
+	private double randomDouble(){
+		Random r = new Random();
+		return r.nextInt(1000) / 1000;
+	}
 
 	public void printTimetable(Timetable bestTimetable) {
-		// TODO Auto-generated method stub
 		int nrSlots =0, nrEvents = 0, startTime = 830;
 		ArrayList<Integer> eventList = new ArrayList<Integer>();
 		for(VenueSchedule vs : bestTimetable.getVenueSchedule()){
@@ -589,7 +1068,7 @@ public class GeneticAlgorithm {
 		    System.out.println("\nFACULTY DATA");
 		    Map<Integer, Faculty> facList = utility.getFaculty();
 		    for(int key : facList.keySet()){
-		    		System.out.println(utility.getFaculty().get(key).toString2());
+		    		System.out.println(utility.getFaculty().get(key).toString2(utility.getAvgWLU()));
 		    }
 		    
 		    System.out.println("\nGROUPING DATA");
@@ -607,8 +1086,71 @@ public class GeneticAlgorithm {
 		    System.out.println("Setup Completed!\n");
 		  }
 
+	public String printTimetable() {
+		String result = "BEST TIMETABLE DATA\n";
+		Timetable bestTimetable = utility.getBestTimetable();
+		int nrSlots =0, nrEvents = 0, startTime = 830;
+		ArrayList<Integer> eventList = new ArrayList<Integer>();
+		for(VenueSchedule vs : bestTimetable.getVenueSchedule()){
+			result += "---------------------------------------------------------------------------------------------";
+			result += "\nVenue: " + vs.getVenue().getRoomName() + "\t Capacity: "+ vs.getVenue().getCapacity() + "\n";
 
+			for(int slot = 0; slot < VenueSchedule.NO_OF_SLOT; slot++){
+				result += startTime +"\t";
+				startTime+=100;
+				for(int day = 0; day < VenueSchedule.NO_OF_DAYS; day++){
+					int eventID = vs.getEvent(day, slot);
+					if(eventID > nrEvents){
+						nrEvents = eventID;
+					}
+					nrSlots++;
+					if (eventID == 0){
+						result += "[\t" + eventID + "\t]";
+					}
+					else{
+						Event child = utility.getEvents(eventID);
+						eventList.add(eventID);
+						String output = "[ " + child.getCourse().getCourseNum() + " " + child.getFaculty().get(0).getName()+ " ]";	
+						output = "[ " + eventID + " " + child.getCourse().getCourseNum() + " " + child.getType() + " " + child.getFaculty().get(0).getName() + "\t]";
+						result += output;
+					}
+				}
+				result += "\n";
+			}
+			startTime = 830;
+		}
+		result += "\nNo of slots: " + nrSlots;
+		result += "\nNo of events: " + nrEvents;
+		return result;
+	}
 
+	public String printFacDayWorked() {
+		// TODO Auto-generated method stub
+		String result = "FACULTY WORKING DAYS DATA\n";
+		Map<Integer, Faculty> facList = utility.getFaculty();
+	    for(int key : facList.keySet()){
+	    		result += utility.getFaculty().get(key).toString4() + "\n";
+	    }
+		return result;
+	}
+	
+	public String printGroupDayWorked() {
+		String result = "GROUPING WORKING DAYS DATA\n";
+		Map<Integer, Grouping> groupList = utility.getGrouping();
+	    for(int key : groupList.keySet()){
+	    		result += utility.getGrouping().get(key).toString2() + "\n";
+	    }
+		return result;
+	}
 
+	public String printHrDist() {
+		String result = "GROUPING HR DIST DATA\n";
+		Map<Integer, Faculty> facList = utility.getFaculty();
+	    for(int key : facList.keySet()){
+	    		result += utility.getFaculty().get(key).toString4() + "\n";
+	    }
+		return result;
+	}
+	
 
 }
