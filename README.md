@@ -1,4 +1,4 @@
-# Final Year Project on Optimising Algorithm (Ongoing)
+# Final Year Project on Optimising Algorithm
 
 ## Background
 From the perspective of computer science, an algorithm is a function that consists of a self-contained sequence of actions to be performed. This function can be used to perform data processing and automated reasoning problems. With extraordinary growth in computational power over the past few decades, algorithms easier automation of manual work and optimisation of processes. The notion of an optimised algorithm aims to extract the maximum output while obeying to restriction governing from the extraction [1]. 
